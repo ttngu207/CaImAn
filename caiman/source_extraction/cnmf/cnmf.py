@@ -290,7 +290,7 @@ class CNMF(object):
         self.estimates = Estimates(A=Ain, C=Cin, b=b_in, f=f_in,
                                    dims=self.params.data['dims'])
 
-    def fit_file(self, motion_correct=False, indices=None, include_eval=False):
+    def fit_file(self, motion_correct=False, indices=None, include_eval=False, output_dir=None, return_mc=False):
         """
         This method packages the analysis pipeline (motion correction, memory
         mapping, patch based CNMF processing and component evaluation) in a
@@ -307,8 +307,13 @@ class CNMF(object):
                 perform analysis only on a part of the FOV
             include_eval (bool)
                 flag for performing component evaluation
+            output_dir (str)
+                directory to save the outputs
+            return_mc (bool)
+                flag to return motion correction object
         Returns:
             cnmf object with the current estimates
+            (optional) motion correction object
         """
         if indices is None:
             indices = (slice(None), slice(None))
@@ -380,8 +385,20 @@ class CNMF(object):
         for log_file in log_files:
             os.remove(log_file)
 
-        return cnm2
+        if output_dir is not None:
+            output_dir = pathlib.Path(output_dir)
+            # move the result files to the specified output directory
+            files_to_move = [fname_new, fname_new[:-5] + '_init.hdf5', cnm2.mmap_file[:-4] + 'hdf5']
+            if motion_correct:
+                files_to_move += fname_mc
+            for f in files_to_move:
+                f = pathlib.Path(f)
+                os.rename(f, output_dir / f.name)
 
+        if return_mc & motion_correct:
+            return cnm2, mc
+
+        return cnm2
 
     def refit(self, images, dview=None):
         """
