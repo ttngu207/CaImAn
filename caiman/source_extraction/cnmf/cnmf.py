@@ -290,7 +290,7 @@ class CNMF(object):
         self.estimates = Estimates(A=Ain, C=Cin, b=b_in, f=f_in,
                                    dims=self.params.data['dims'])
 
-    def fit_file(self, motion_correct=False, indices=None, include_eval=False):
+    def fit_file(self, motion_correct=False, indices=None, include_eval=False, output_dir=None, return_mc=False):
         """
         This method packages the analysis pipeline (motion correction, memory
         mapping, patch based CNMF processing and component evaluation) in a
@@ -307,8 +307,13 @@ class CNMF(object):
                 perform analysis only on a part of the FOV
             include_eval (bool)
                 flag for performing component evaluation
+            output_dir (str)
+                directory to save the outputs
+            return_mc (bool)
+                flag to return motion correction object
         Returns:
             cnmf object with the current estimates
+            (optional) motion correction object
         """
         if indices is None:
             indices = (slice(None), slice(None))
@@ -362,7 +367,8 @@ class CNMF(object):
         fit_cnm = self.fit(images, indices=indices)
         Cn = caiman.summary_images.local_correlations(images[::max(T//1000, 1)], swap_dim=False)
         Cn[np.isnan(Cn)] = 0
-        fit_cnm.save(fname_new[:-5] + '_init.hdf5')
+        fname_init_hdf5 = fname_new[:-5] + '_init.hdf5'
+        fit_cnm.save(fname_init_hdf5)
         #fit_cnm.params.change_params({'p': self.params.get('preprocess', 'p')})
         # RE-RUN seeded CNMF on accepted patches to refine and perform deconvolution
         cnm2 = fit_cnm.refit(images, dview=self.dview)
@@ -372,7 +378,8 @@ class CNMF(object):
         # Extract DF/F values
         cnm2.estimates.detrend_df_f(quantileMin=8, frames_window=250)
         cnm2.estimates.Cn = Cn
-        cnm2.save(cnm2.mmap_file[:-4] + 'hdf5')
+        fname_hdf5 = cnm2.mmap_file[:-4] + 'hdf5'
+        cnm2.save(fname_hdf5)
 
         # XXX Why are we stopping the cluster here? What started it? Why remove log files?
         caiman.cluster.stop_server(dview=self.dview)
@@ -380,8 +387,20 @@ class CNMF(object):
         for log_file in log_files:
             os.remove(log_file)
 
-        return cnm2
+        if output_dir is not None:
+            output_dir = pathlib.Path(output_dir)
+            # move the result files to the specified output directory
+            files_to_move = [fname_new, fname_init_hdf5, fname_hdf5]
+            if motion_correct:
+                files_to_move += fname_mc
+            for f in files_to_move:
+                f = pathlib.Path(f)
+                os.rename(f, output_dir / f.name)
 
+        if return_mc & motion_correct:
+            return cnm2, mc
+
+        return cnm2
 
     def refit(self, images, dview=None):
         """
