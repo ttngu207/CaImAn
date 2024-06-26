@@ -396,7 +396,7 @@ class CNMF(object):
                 files_to_move += fname_mc
             for f in files_to_move:
                 f = pathlib.Path(f)
-                shutil.copy(f, output_dir)
+                shutil.copy2(f, output_dir)
 
         if return_mc & motion_correct:
             return cnm2, mc
