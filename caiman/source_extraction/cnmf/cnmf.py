@@ -367,7 +367,8 @@ class CNMF(object):
         fit_cnm = self.fit(images, indices=indices)
         Cn = caiman.summary_images.local_correlations(images[::max(T//1000, 1)], swap_dim=False)
         Cn[np.isnan(Cn)] = 0
-        fit_cnm.save(fname_new[:-5] + '_init.hdf5')
+        fname_init_hdf5 = fname_new[:-5] + '_init.hdf5'
+        fit_cnm.save(fname_init_hdf5)
         #fit_cnm.params.change_params({'p': self.params.get('preprocess', 'p')})
         # RE-RUN seeded CNMF on accepted patches to refine and perform deconvolution
         cnm2 = fit_cnm.refit(images, dview=self.dview)
@@ -377,7 +378,8 @@ class CNMF(object):
         # Extract DF/F values
         cnm2.estimates.detrend_df_f(quantileMin=8, frames_window=250)
         cnm2.estimates.Cn = Cn
-        cnm2.save(cnm2.mmap_file[:-4] + 'hdf5')
+        fname_hdf5 = cnm2.mmap_file[:-4] + 'hdf5'
+        cnm2.save(fname_hdf5)
 
         # XXX Why are we stopping the cluster here? What started it? Why remove log files?
         caiman.cluster.stop_server(dview=self.dview)
@@ -388,7 +390,7 @@ class CNMF(object):
         if output_dir is not None:
             output_dir = pathlib.Path(output_dir)
             # move the result files to the specified output directory
-            files_to_move = [fname_new, fname_new[:-5] + '_init.hdf5', cnm2.mmap_file[:-4] + 'hdf5']
+            files_to_move = [fname_new, fname_init_hdf5, fname_hdf5]
             if motion_correct:
                 files_to_move += fname_mc
             for f in files_to_move:
