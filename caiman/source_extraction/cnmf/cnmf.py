@@ -21,6 +21,7 @@ import inspect
 import logging
 import numpy as np
 import os
+import shutil
 import pathlib
 import psutil
 import scipy
@@ -388,14 +389,14 @@ class CNMF(object):
             os.remove(log_file)
 
         if output_dir is not None:
+            # copy the result files to the specified output directory
             output_dir = pathlib.Path(output_dir)
-            # move the result files to the specified output directory
             files_to_move = [fname_new, fname_init_hdf5, fname_hdf5]
             if motion_correct:
                 files_to_move += fname_mc
             for f in files_to_move:
                 f = pathlib.Path(f)
-                os.rename(f, output_dir / f.name)
+                shutil.copy2(f, output_dir)
 
         if return_mc & motion_correct:
             return cnm2, mc
