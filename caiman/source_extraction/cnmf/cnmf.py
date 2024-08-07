@@ -326,6 +326,13 @@ class CNMF(object):
             logging.warning("Error: File not found, with file list:\n" + fnames[0])
             raise Exception('File not found!')
 
+        caiman_temp = os.environ.get("CAIMAN_TEMP")
+        if output_dir is not None:
+            # update CAIMAN_TEMP to point to `output_dir`
+            output_dir = pathlib.Path(output_dir)
+            output_dir.mkdir(parents=True, exist_ok=True)
+            os.environ["CAIMAN_TEMP"] = str(output_dir)
+
         base_name = pathlib.Path(fnames[0]).stem + "_memmap_"
         if extension == '.mmap':
             fname_new = fnames[0]
@@ -388,15 +395,11 @@ class CNMF(object):
         for log_file in log_files:
             os.remove(log_file)
 
-        if output_dir is not None:
-            # copy the result files to the specified output directory
-            output_dir = pathlib.Path(output_dir)
-            files_to_move = [fname_new, fname_init_hdf5, fname_hdf5]
-            if motion_correct:
-                files_to_move += fname_mc
-            for f in files_to_move:
-                f = pathlib.Path(f)
-                shutil.copy2(f, output_dir)
+        # revert CAIMAN_TEMP to its original value
+        if caiman_temp is not None:
+            os.environ["CAIMAN_TEMP"] = caiman_temp
+        else:
+            del os.environ["CAIMAN_TEMP"]
 
         if return_mc & motion_correct:
             return cnm2, mc
